@@ -14,6 +14,8 @@ import {
   createLocationMessage,
   createTextMessage
 } from './utils/MessageUtils';
+import Toolbar from './components/Toolbar';
+import ImageGrid from './components/ImageGrid';
 
 export default class App extends Component {
 
@@ -28,6 +30,40 @@ export default class App extends Component {
       })
     ],
     fullscreenImageId: null,
+    isInputFocused: false,
+  }
+
+  handlePressToolbarCamera = () => {
+
+  }
+
+  handlePressToolbarLocation = () => {
+    const { messages } = this.state;
+
+    navigator.geolocation.getCurrentPosition((position) => {
+      const { coords: { latitude, longitude } } = position;
+
+      this.setState({
+        messages: [
+          createLocationMessage({
+            latitude,
+            longitude,
+          }),
+          ...messages,
+        ]
+      })
+    })
+  }
+
+  handleChangeFocus = (isFocused) => {
+    this.setState({ isInputFocused: isFocused });
+  }
+
+  handleSubmit = (text) => {
+    const { messages } = this.state;
+    this.setState({
+      messages: [createTextMessage(text), ...messages],
+    })
   }
 
   handlePressMessage = ({ id, type }) => {
@@ -53,7 +89,7 @@ export default class App extends Component {
         );
         break;
       case 'image':
-        this.setState({ fullscreenImageId: id });
+        this.setState({ fullscreenImageId: id, isInputFocused: false });
         break;
       default:
         break;
@@ -67,6 +103,22 @@ export default class App extends Component {
         <MessageList
           messages={messages}
           onPressMessage={this.handlePressMessage}
+        />
+      </View>
+    )
+  }
+
+  renderToolbar() {
+    const { isInputFocused } = this.state;
+
+    return (
+      <View style={styles.toolBar}>
+        <Toolbar
+          isFocused={isInputFocused}
+          onSubmit={this.handleSubmit}
+          onChangeFocus={this.handleChangeFocus}
+          onPressCamera={this.handlePressToolbarCamera}
+          onPressLocation={this.handlePressToolbarLocation}
         />
       </View>
     )
@@ -98,13 +150,9 @@ export default class App extends Component {
   }
   renderInputMethodEditor() {
     return (
-      <View style={styles.inputMethodEditor}></View>
-    )
-  }
-
-  renderToolBar() {
-    return (
-      <View style={styles.toolBar}></View>
+      <View style={styles.inputMethodEditor}>
+        <ImageGrid />
+      </View>
     )
   }
 
@@ -130,7 +178,7 @@ export default class App extends Component {
       <View style={styles.container} >
         <Status />
         {this.renderMessageList()}
-        {this.renderToolBar()}
+        {this.renderToolbar()}
         {this.renderInputMethodEditor()}
         {this.renderFullscreenImage()}
       </View>
