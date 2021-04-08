@@ -14,6 +14,9 @@ const keyExtractor = ({ uri }) => uri;
 
 export default class ImageGrid extends Component {
 
+    loading = true;
+    cursor = null;
+
     static defaultProps = {
         onPressImage: () => { },
     }
@@ -47,24 +50,37 @@ export default class ImageGrid extends Component {
 
     }
 
-    getImages = async () => {
+    getImages = async (after) => {
+        if (this.loading) return;
+
         if (Platform.OS === 'android' && !(await this.hasAndroidPermission)) {
             return;
         }
 
-        const results = await CameraRoll.getPhotos({ first: 20 });
-        console.log(results)
-        const { edges } = results;
+        const results = await CameraRoll.getPhotos({ first: 20, after });
+
+        const { edges, page_info: { has_next_page, end_cursor } } = results;
 
         const loadedImages = edges.map(item => item.node.image);
 
-        this.setState({ images: loadedImages });
+        this.setState({ images: this.state.images.concat(loadedImages) },
+
+            () => {
+                this.loading = false;
+                this.cursor = has_next_page ? end_cursor : null;
+            });
 
 
 
     }
 
+    getNextImages = () => {
+        if (!this.cursor) return;
+        this.getImages(this.cursor);
+    }
+
     renderItem = ({ item: { uri }, size, marginTop, marginLeft }) => {
+        const { onPressImage } = this.props;
         const style = {
             width: size,
             height: size,
@@ -72,7 +88,16 @@ export default class ImageGrid extends Component {
             marginLeft,
         }
 
-        return <Image source={{ uri }} style={style} />
+        return (
+            <TouchableOpacity
+                key={uri}
+                activeOpacity={0.75}
+                onPress={() => onPressImage(uri)}
+                style={style}
+            >
+                <Image source={{ uri }} style={styles.image} />
+            </TouchableOpacity>
+        );
     }
     render() {
         const { images } = this.state;
